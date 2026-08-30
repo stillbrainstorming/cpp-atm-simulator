@@ -66,7 +66,7 @@ public:
 
     void cashWithDraw(int amount_a)
     {
-        if (amount_a > 0 && amount_a < balance)
+        if (amount_a > 0 && amount_a <= balance)
         {
             balance -= amount_a;
             cout << endl << "Please Collect Your Cash";
