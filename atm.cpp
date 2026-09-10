@@ -109,6 +109,7 @@ public:
 class ATMApplication
 {
 private:
+    static const int maxLoginAttempts = 3;
     Account account;
     AuthenticationService authenticationService;
     TransactionService transactionService;
@@ -122,20 +123,33 @@ private:
     {
         long int enterAccountNo;
         int enterAccessCode;
+        int failedAttempts = 0;
 
         cout << endl << "**** Welcome to ATM ****" << endl;
-        cout << endl << "Enter Your Account No: ";
-        cin >> enterAccountNo;
 
-        cout << endl << "Enter PIN: ";
-        cin >> enterAccessCode;
-
-        if (authenticationService.authenticate(account, enterAccountNo, enterAccessCode))
+        while (failedAttempts < maxLoginAttempts)
         {
-            return true;
+            cout << endl << "Enter Your Account No: ";
+            cin >> enterAccountNo;
+
+            cout << endl << "Enter PIN: ";
+            cin >> enterAccessCode;
+
+            if (authenticationService.authenticate(account, enterAccountNo, enterAccessCode))
+            {
+                return true;
+            }
+
+            ++failedAttempts;
+            cout << endl << "Invalid Account No. or PIN.";
+
+            if (failedAttempts < maxLoginAttempts)
+            {
+                cout << endl << "Attempts remaining: " << maxLoginAttempts - failedAttempts;
+            }
         }
 
-        cout << endl << "Invalid Account No. or PIN.";
+        cout << endl << "Maximum login attempts exceeded.";
         waitForInput();
         return false;
     }
