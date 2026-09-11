@@ -1,7 +1,10 @@
-#include <conio.h>
 #include <iostream>
 #include <string>
 #include <cstdlib>
+
+#ifdef _WIN32
+#include <conio.h>
+#endif
 
 using namespace std;
 
@@ -114,15 +117,43 @@ private:
     AuthenticationService authenticationService;
     TransactionService transactionService;
 
+    int readPin()
+    {
+#ifdef _WIN32
+        int accessCode = 0;
+        char digit;
+        cout << endl << "Enter PIN: ";
+        while ((digit = static_cast<char>(_getch())) != '\r')
+        {
+            if (digit >= '0' && digit <= '9')
+            {
+                accessCode = accessCode * 10 + (digit - '0');
+                cout << '*';
+            }
+        }
+        cout << endl;
+        return accessCode;
+#else
+        int accessCode;
+        cout << endl << "Enter PIN: ";
+        cin >> accessCode;
+        return accessCode;
+#endif
+    }
+
     void waitForInput()
     {
+#ifdef _WIN32
         _getch();
+#else
+        cin.ignore();
+        cin.get();
+#endif
     }
 
     bool login()
     {
         long int enterAccountNo;
-        int enterAccessCode;
         int failedAttempts = 0;
 
         cout << endl << "**** Welcome to ATM ****" << endl;
@@ -132,8 +163,7 @@ private:
             cout << endl << "Enter Your Account No: ";
             cin >> enterAccountNo;
 
-            cout << endl << "Enter PIN: ";
-            cin >> enterAccessCode;
+            int enterAccessCode = readPin();
 
             if (authenticationService.authenticate(account, enterAccountNo, enterAccessCode))
             {
@@ -223,7 +253,9 @@ private:
 
         do
         {
+#ifdef _WIN32
             system("cls");
+#endif
 
             cout << endl << "**** Welcome to ATM ****" << endl;
             cout << endl << "Select an Option:";
@@ -270,12 +302,16 @@ public:
 
     void run()
     {
+#ifdef _WIN32
         system("cls");
+#endif
         initialize();
 
         do
         {
+#ifdef _WIN32
             system("cls");
+#endif
 
             if (login())
             {
