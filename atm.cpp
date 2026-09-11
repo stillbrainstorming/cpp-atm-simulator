@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <vector>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -72,9 +73,17 @@ enum class WithdrawalResult
 class AuthenticationService
 {
 public:
-    bool authenticate(const Account& account, long int account_No_a, int accessCode_a)
+    Account* authenticate(vector<Account>& accounts, long int account_No_a, int accessCode_a)
     {
-        return account.account_No == account_No_a && account.accessCode == accessCode_a;
+        for (auto& account : accounts)
+        {
+            if (account.account_No == account_No_a && account.accessCode == accessCode_a)
+            {
+                return &account;
+            }
+        }
+
+        return nullptr;
     }
 };
 
@@ -113,7 +122,8 @@ class ATMApplication
 {
 private:
     static const int maxLoginAttempts = 3;
-    Account account;
+    vector<Account> accounts;
+    Account* activeAccount = nullptr;
     AuthenticationService authenticationService;
     TransactionService transactionService;
 
@@ -164,9 +174,11 @@ private:
             cin >> enterAccountNo;
 
             int enterAccessCode = readPin();
+            Account* authenticatedAccount = authenticationService.authenticate(accounts, enterAccountNo, enterAccessCode);
 
-            if (authenticationService.authenticate(account, enterAccountNo, enterAccessCode))
+            if (authenticatedAccount != nullptr)
             {
+                activeAccount = authenticatedAccount;
                 return true;
             }
 
@@ -186,7 +198,7 @@ private:
 
     void showBalance()
     {
-        cout << endl << "Your Bank Balance: " << account.getBalance();
+        cout << endl << "Your Bank Balance: " << activeAccount->getBalance();
         waitForInput();
     }
 
@@ -197,12 +209,12 @@ private:
         cout << endl << "Enter the Amount: ";
         cin >> amount;
 
-        WithdrawalResult result = transactionService.withdraw(account, amount);
+        WithdrawalResult result = transactionService.withdraw(*activeAccount, amount);
 
         if (result == WithdrawalResult::Success)
         {
             cout << endl << "Please Collect Your Cash";
-            cout << endl << "Available Balance: " << account.getBalance();
+            cout << endl << "Available Balance: " << activeAccount->getBalance();
         }
         else if (result == WithdrawalResult::InvalidAmount)
         {
@@ -219,10 +231,10 @@ private:
     void showUserDetails()
     {
         cout << endl << "*** User Details ***";
-        cout << endl << "Account No : " << account.getAccountNo();
-        cout << endl << "Name       : " << account.getName();
-        cout << endl << "Balance    : " << account.getBalance();
-        cout << endl << "Mobile No  : " << account.getMobileNo();
+        cout << endl << "Account No : " << activeAccount->getAccountNo();
+        cout << endl << "Name       : " << activeAccount->getName();
+        cout << endl << "Balance    : " << activeAccount->getBalance();
+        cout << endl << "Mobile No  : " << activeAccount->getMobileNo();
         waitForInput();
     }
 
@@ -235,7 +247,7 @@ private:
         cout << endl << "Enter New Mobile No.: ";
         cin >> newMobileNo;
 
-        if (transactionService.updateMobile(account, oldMobileNo, newMobileNo))
+        if (transactionService.updateMobile(*activeAccount, oldMobileNo, newMobileNo))
         {
             cout << endl << "Successfully Updated Mobile No.";
         }
@@ -297,7 +309,15 @@ private:
 public:
     void initialize()
     {
-        account.setData(1234567, "Tim", 1111, 45000.90, "9087654321");
+        accounts.clear();
+
+        Account firstAccount;
+        firstAccount.setData(1234567, "Tim", 1111, 45000.90, "9087654321");
+        accounts.push_back(firstAccount);
+
+        Account secondAccount;
+        secondAccount.setData(7654321, "Alex", 2222, 30000.00, "9876543210");
+        accounts.push_back(secondAccount);
     }
 
     void run()
@@ -313,6 +333,7 @@ public:
             system("cls");
 #endif
 
+            activeAccount = nullptr;
             if (login())
             {
                 runSession();
