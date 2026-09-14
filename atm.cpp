@@ -11,6 +11,28 @@ using namespace std;
 
 class AuthenticationService;
 
+enum class WithdrawalResult
+{
+    InvalidAmount,
+    InsufficientBalance,
+    Success
+};
+
+enum class DepositResult
+{
+    InvalidAmount,
+    Success
+};
+
+enum class TransferResult
+{
+    InvalidAmount,
+    SameAccount,
+    AccountNotFound,
+    InsufficientBalance,
+    Success
+};
+
 class Account
 {
 private:
@@ -61,13 +83,11 @@ public:
     {
         balance -= amount;
     }
-};
 
-enum class WithdrawalResult
-{
-    InvalidAmount,
-    InsufficientBalance,
-    Success
+    void addBalance(double amount)
+    {
+        balance += amount;
+    }
 };
 
 class AuthenticationService
@@ -90,7 +110,7 @@ public:
 class TransactionService
 {
 public:
-    WithdrawalResult withdraw(Account& account, int amount)
+    WithdrawalResult withdraw(Account& account, double amount)
     {
         if (amount <= 0)
         {
@@ -104,6 +124,44 @@ public:
 
         account.deductBalance(amount);
         return WithdrawalResult::Success;
+    }
+
+    DepositResult deposit(Account& account, double amount)
+    {
+        if (amount <= 0)
+        {
+            return DepositResult::InvalidAmount;
+        }
+
+        account.addBalance(amount);
+        return DepositResult::Success;
+    }
+
+    TransferResult transfer(Account& source, Account* target, double amount)
+    {
+        if (amount <= 0)
+        {
+            return TransferResult::InvalidAmount;
+        }
+
+        if (target == nullptr)
+        {
+            return TransferResult::AccountNotFound;
+        }
+
+        if (source.getAccountNo() == target->getAccountNo())
+        {
+            return TransferResult::SameAccount;
+        }
+
+        if (amount > source.getBalance())
+        {
+            return TransferResult::InsufficientBalance;
+        }
+
+        source.deductBalance(amount);
+        target->addBalance(amount);
+        return TransferResult::Success;
     }
 
     bool updateMobile(Account& account, const string& oldMobileNo, const string& newMobileNo)
@@ -126,6 +184,19 @@ private:
     Account* activeAccount = nullptr;
     AuthenticationService authenticationService;
     TransactionService transactionService;
+
+    Account* findAccount(long int accountNo)
+    {
+        for (auto& account : accounts)
+        {
+            if (account.getAccountNo() == accountNo)
+            {
+                return &account;
+            }
+        }
+
+        return nullptr;
+    }
 
     int readPin()
     {
@@ -204,7 +275,7 @@ private:
 
     void withdrawCash()
     {
-        int amount = 0;
+        double amount = 0;
 
         cout << endl << "Enter the Amount: ";
         cin >> amount;
@@ -223,6 +294,66 @@ private:
         else
         {
             cout << endl << "Invalid Input or Insufficient Balance";
+        }
+
+        waitForInput();
+    }
+
+    void depositCash()
+    {
+        double amount = 0;
+
+        cout << endl << "Enter the Amount: ";
+        cin >> amount;
+
+        DepositResult result = transactionService.deposit(*activeAccount, amount);
+
+        if (result == DepositResult::Success)
+        {
+            cout << endl << "Cash deposited successfully.";
+            cout << endl << "Available Balance: " << activeAccount->getBalance();
+        }
+        else
+        {
+            cout << endl << "Invalid Deposit Amount";
+        }
+
+        waitForInput();
+    }
+
+    void transferFunds()
+    {
+        long int targetAccountNo;
+        double amount = 0;
+
+        cout << endl << "Enter Target Account No.: ";
+        cin >> targetAccountNo;
+        cout << endl << "Enter Transfer Amount: ";
+        cin >> amount;
+
+        Account* targetAccount = findAccount(targetAccountNo);
+        TransferResult result = transactionService.transfer(*activeAccount, targetAccount, amount);
+
+        if (result == TransferResult::Success)
+        {
+            cout << endl << "Transfer completed successfully.";
+            cout << endl << "Available Balance: " << activeAccount->getBalance();
+        }
+        else if (result == TransferResult::InvalidAmount)
+        {
+            cout << endl << "Invalid Transfer Amount";
+        }
+        else if (result == TransferResult::SameAccount)
+        {
+            cout << endl << "Source and target accounts must be different.";
+        }
+        else if (result == TransferResult::AccountNotFound)
+        {
+            cout << endl << "Target account not found.";
+        }
+        else
+        {
+            cout << endl << "Insufficient Balance";
         }
 
         waitForInput();
@@ -273,9 +404,11 @@ private:
             cout << endl << "Select an Option:";
             cout << endl << "1. Check Balance";
             cout << endl << "2. Cash Withdraw";
-            cout << endl << "3. Show User Details";
-            cout << endl << "4. Update Mobile No.";
-            cout << endl << "5. Exit" << endl;
+            cout << endl << "3. Deposit Cash";
+            cout << endl << "4. Transfer Funds";
+            cout << endl << "5. Show User Details";
+            cout << endl << "6. Update Mobile No.";
+            cout << endl << "7. Exit" << endl;
             cin >> choice;
 
             switch (choice)
@@ -289,14 +422,22 @@ private:
                 break;
 
             case 3:
-                showUserDetails();
+                depositCash();
                 break;
 
             case 4:
-                updateMobileNo();
+                transferFunds();
                 break;
 
             case 5:
+                showUserDetails();
+                break;
+
+            case 6:
+                updateMobileNo();
+                break;
+
+            case 7:
                 exit(0);
 
             default:
