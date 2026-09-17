@@ -1,8 +1,6 @@
 # CPP ATM Simulator
 
-A console-based ATM simulation built with C++ that demonstrates core Object-Oriented Programming principles including encapsulation, data hiding, authentication, and transaction handling. The application models an ATM workflow with multiple in-memory accounts.
-
----
+A console-based ATM simulation built with C++ that demonstrates object-oriented design, authentication, account management, and transaction handling. The application models an ATM workflow with multiple in-memory accounts.
 
 ## Features
 
@@ -12,18 +10,12 @@ A console-based ATM simulation built with C++ that demonstrates core Object-Orie
 - Multiple in-memory accounts
 - Check account balance
 - Withdraw cash with amount and balance validation
+- Deposit cash
+- Transfer funds between accounts
 - View the authenticated user's profile
 - Update the authenticated user's mobile number after old-number verification
-- Continuous session loop
+- View transaction history for the authenticated account
 - Windows-specific console behavior isolated with `_WIN32` guards
-
-## Project Structure
-
-```
-cpp-atm-simulator/
-    atm.cpp        - Application, domain, authentication, and transaction services
-    README.md      - Project documentation
-```
 
 ## Default Test Accounts
 
@@ -32,7 +24,13 @@ cpp-atm-simulator/
 | `1234567` | `1111` | Tim | `45000.90` | `9087654321` |
 | `7654321` | `2222` | Alex | `30000.00` | `9876543210` |
 
-Each account has an independent session state. A withdrawal or mobile-number update is applied only to the account that successfully authenticated.
+## Transaction History
+
+Successful withdrawals, deposits, and transfers are recorded against the affected account. Each entry contains the transaction type, amount, resulting balance, and related account number for transfers.
+
+Invalid or failed monetary operations do not create successful transaction-history entries.
+
+Transaction history is currently held in memory and is reset when the application exits.
 
 ## Application Flow
 
@@ -54,8 +52,11 @@ Login Screen
 ATM Menu
     |-- Check Balance
     |-- Cash Withdraw
+    |-- Deposit Cash
+    |-- Transfer Funds
     |-- Show User Details
     |-- Update Mobile No.
+    |-- Transaction History
     |-- Exit
 ```
 
@@ -93,9 +94,9 @@ Windows:
 
 - Accounts are configured in source code and are not yet loaded from persistent storage.
 - Account and transaction state is held in memory and resets when the program exits.
-- The project does not yet provide deposits, transfers, or transaction history.
+- Transaction history does not yet include timestamps or persistent storage.
 - The non-Windows PIN fallback does not provide console masking.
 
 ## Roadmap
 
-The next planned stages are persistent account storage, deposits/transfers, transaction history, stronger monetary/input validation, automated business-logic tests, and documentation refinement.
+The next planned stages are persistent account and transaction storage, stronger monetary/input validation, automated business-logic tests, and documentation refinement.

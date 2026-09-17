@@ -2,6 +2,7 @@
 #include <string>
 #include <cstdlib>
 #include <vector>
+#include <iomanip>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -10,6 +11,14 @@
 using namespace std;
 
 class AuthenticationService;
+
+struct Transaction
+{
+    string type;
+    double amount;
+    long int relatedAccountNo;
+    double balanceAfter;
+};
 
 enum class WithdrawalResult
 {
@@ -41,6 +50,7 @@ private:
     int accessCode;
     double balance;
     string mobile_No;
+    vector<Transaction> transactions;
 
     friend class AuthenticationService;
 
@@ -52,6 +62,7 @@ public:
         accessCode = accessCode_a;
         balance = balance_a;
         mobile_No = mobile_No_a;
+        transactions.clear();
     }
 
     long int getAccountNo()
@@ -74,6 +85,11 @@ public:
         return mobile_No;
     }
 
+    const vector<Transaction>& getTransactions() const
+    {
+        return transactions;
+    }
+
     void updateMobile(const string& mobile_No_a)
     {
         mobile_No = mobile_No_a;
@@ -87,6 +103,11 @@ public:
     void addBalance(double amount)
     {
         balance += amount;
+    }
+
+    void recordTransaction(const string& type, double amount, long int relatedAccountNo = 0)
+    {
+        transactions.push_back({type, amount, relatedAccountNo, balance});
     }
 };
 
@@ -123,6 +144,7 @@ public:
         }
 
         account.deductBalance(amount);
+        account.recordTransaction("Withdrawal", amount);
         return WithdrawalResult::Success;
     }
 
@@ -134,6 +156,7 @@ public:
         }
 
         account.addBalance(amount);
+        account.recordTransaction("Deposit", amount);
         return DepositResult::Success;
     }
 
@@ -161,6 +184,8 @@ public:
 
         source.deductBalance(amount);
         target->addBalance(amount);
+        source.recordTransaction("Transfer Out", amount, target->getAccountNo());
+        target->recordTransaction("Transfer In", amount, source.getAccountNo());
         return TransferResult::Success;
     }
 
@@ -269,7 +294,37 @@ private:
 
     void showBalance()
     {
+        cout << fixed << setprecision(2);
         cout << endl << "Your Bank Balance: " << activeAccount->getBalance();
+        waitForInput();
+    }
+
+    void showTransactionHistory()
+    {
+        const auto& transactions = activeAccount->getTransactions();
+        cout << fixed << setprecision(2);
+        cout << endl << "*** Transaction History ***";
+
+        if (transactions.empty())
+        {
+            cout << endl << "No transactions recorded.";
+            waitForInput();
+            return;
+        }
+
+        for (size_t i = 0; i < transactions.size(); ++i)
+        {
+            const auto& transaction = transactions[i];
+            cout << endl << i + 1 << ". " << transaction.type
+                 << " | Amount: " << transaction.amount
+                 << " | Balance: " << transaction.balanceAfter;
+
+            if (transaction.relatedAccountNo != 0)
+            {
+                cout << " | Account: " << transaction.relatedAccountNo;
+            }
+        }
+
         waitForInput();
     }
 
@@ -285,6 +340,7 @@ private:
         if (result == WithdrawalResult::Success)
         {
             cout << endl << "Please Collect Your Cash";
+            cout << fixed << setprecision(2);
             cout << endl << "Available Balance: " << activeAccount->getBalance();
         }
         else if (result == WithdrawalResult::InvalidAmount)
@@ -311,6 +367,7 @@ private:
         if (result == DepositResult::Success)
         {
             cout << endl << "Cash deposited successfully.";
+            cout << fixed << setprecision(2);
             cout << endl << "Available Balance: " << activeAccount->getBalance();
         }
         else
@@ -337,6 +394,7 @@ private:
         if (result == TransferResult::Success)
         {
             cout << endl << "Transfer completed successfully.";
+            cout << fixed << setprecision(2);
             cout << endl << "Available Balance: " << activeAccount->getBalance();
         }
         else if (result == TransferResult::InvalidAmount)
@@ -361,6 +419,7 @@ private:
 
     void showUserDetails()
     {
+        cout << fixed << setprecision(2);
         cout << endl << "*** User Details ***";
         cout << endl << "Account No : " << activeAccount->getAccountNo();
         cout << endl << "Name       : " << activeAccount->getName();
@@ -408,7 +467,8 @@ private:
             cout << endl << "4. Transfer Funds";
             cout << endl << "5. Show User Details";
             cout << endl << "6. Update Mobile No.";
-            cout << endl << "7. Exit" << endl;
+            cout << endl << "7. Transaction History";
+            cout << endl << "8. Exit" << endl;
             cin >> choice;
 
             switch (choice)
@@ -438,6 +498,10 @@ private:
                 break;
 
             case 7:
+                showTransactionHistory();
+                break;
+
+            case 8:
                 exit(0);
 
             default:
