@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <vector>
 #include <iomanip>
+#include <fstream>
+#include <sstream>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -109,6 +111,13 @@ public:
     {
         transactions.push_back({type, amount, relatedAccountNo, balance});
     }
+
+    void restoreState(double balance_a, const string& mobile_No_a, const vector<Transaction>& transactions_a)
+    {
+        balance = balance_a;
+        mobile_No = mobile_No_a;
+        transactions = transactions_a;
+    }
 };
 
 class AuthenticationService
@@ -205,6 +214,7 @@ class ATMApplication
 {
 private:
     static const int maxLoginAttempts = 3;
+    static constexpr const char* storagePath = "atm_data.txt";
     vector<Account> accounts;
     Account* activeAccount = nullptr;
     AuthenticationService authenticationService;
@@ -221,6 +231,97 @@ private:
         }
 
         return nullptr;
+    }
+
+    void loadState()
+    {
+        ifstream file(storagePath);
+        if (!file.is_open())
+        {
+            return;
+        }
+
+        string line;
+        while (getline(file, line))
+        {
+            if (line.empty())
+            {
+                continue;
+            }
+
+            try
+            {
+                stringstream stream(line);
+                string kind;
+                getline(stream, kind, '|');
+
+                if (kind == "A")
+                {
+                    string accountNoText, name, balanceText, mobileNo;
+                    getline(stream, accountNoText, '|');
+                    getline(stream, name, '|');
+                    getline(stream, balanceText, '|');
+                    getline(stream, mobileNo, '|');
+
+                    long int accountNo = stol(accountNoText);
+                    double balance = stod(balanceText);
+                    Account* account = findAccount(accountNo);
+                    if (account != nullptr)
+                    {
+                        account->restoreState(balance, mobileNo, {});
+                    }
+                }
+                else if (kind == "T")
+                {
+                    string accountNoText, type, amountText, relatedText, balanceText;
+                    getline(stream, accountNoText, '|');
+                    getline(stream, type, '|');
+                    getline(stream, amountText, '|');
+                    getline(stream, relatedText, '|');
+                    getline(stream, balanceText, '|');
+
+                    long int accountNo = stol(accountNoText);
+                    Account* account = findAccount(accountNo);
+                    if (account != nullptr)
+                    {
+                        Transaction transaction{type, stod(amountText), stol(relatedText), stod(balanceText)};
+                        vector<Transaction> transactions = account->getTransactions();
+                        transactions.push_back(transaction);
+                        account->restoreState(account->getBalance(), account->getMobileNo(), transactions);
+                    }
+                }
+            }
+            catch (const exception&)
+            {
+            }
+        }
+    }
+
+    void saveState()
+    {
+        ofstream file(storagePath, ios::trunc);
+        if (!file.is_open())
+        {
+            return;
+        }
+
+        file << fixed << setprecision(2);
+        for (const auto& account : accounts)
+        {
+            file << "A|" << account.getAccountNo() << "|"
+                 << account.getName() << "|"
+                 << account.getBalance() << "|"
+                 << account.getMobileNo() << "|\n";
+
+            for (const auto& transaction : account.getTransactions())
+            {
+                file << "T|" << account.getAccountNo() << "|"
+                     << transaction.type << "|"
+                     << transaction.amount << "|"
+                     << transaction.relatedAccountNo << "|"
+                     << transaction.balanceAfter << "|\n";
+            }
+        }
     }
 
     int readPin()
@@ -339,6 +440,7 @@ private:
 
         if (result == WithdrawalResult::Success)
         {
+            saveState();
             cout << endl << "Please Collect Your Cash";
             cout << fixed << setprecision(2);
             cout << endl << "Available Balance: " << activeAccount->getBalance();
@@ -366,6 +468,7 @@ private:
 
         if (result == DepositResult::Success)
         {
+            saveState();
             cout << endl << "Cash deposited successfully.";
             cout << fixed << setprecision(2);
             cout << endl << "Available Balance: " << activeAccount->getBalance();
@@ -393,6 +496,7 @@ private:
 
         if (result == TransferResult::Success)
         {
+            saveState();
             cout << endl << "Transfer completed successfully.";
             cout << fixed << setprecision(2);
             cout << endl << "Available Balance: " << activeAccount->getBalance();
@@ -439,6 +543,7 @@ private:
 
         if (transactionService.updateMobile(*activeAccount, oldMobileNo, newMobileNo))
         {
+            saveState();
             cout << endl << "Successfully Updated Mobile No.";
         }
         else
@@ -523,6 +628,8 @@ public:
         Account secondAccount;
         secondAccount.setData(7654321, "Alex", 2222, 30000.00, "9876543210");
         accounts.push_back(secondAccount);
+
+        loadState();
     }
 
     void run()

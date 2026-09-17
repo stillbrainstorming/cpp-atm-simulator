@@ -1,6 +1,6 @@
 # CPP ATM Simulator
 
-A console-based ATM simulation built with C++ that demonstrates object-oriented design, authentication, account management, and transaction handling. The application models an ATM workflow with multiple in-memory accounts.
+A console-based ATM simulation built with C++ that demonstrates object-oriented design, authentication, account management, transaction handling, and local persistence. The application models an ATM workflow with multiple in-memory accounts restored from a local storage file.
 
 ## Features
 
@@ -15,6 +15,8 @@ A console-based ATM simulation built with C++ that demonstrates object-oriented 
 - View the authenticated user's profile
 - Update the authenticated user's mobile number after old-number verification
 - View transaction history for the authenticated account
+- Persist account balances, mobile numbers, and successful transaction history between sessions
+- Ignore malformed persistence records without terminating the application
 - Windows-specific console behavior isolated with `_WIN32` guards
 
 ## Default Test Accounts
@@ -24,13 +26,17 @@ A console-based ATM simulation built with C++ that demonstrates object-oriented 
 | `1234567` | `1111` | Tim | `45000.90` | `9087654321` |
 | `7654321` | `2222` | Alex | `30000.00` | `9876543210` |
 
+## Persistent Storage
+
+Application state is stored in `atm_data.txt` in the working directory. The file contains account balances, mobile numbers, and successful transaction-history entries. The PIN remains part of the demo account configuration in source code.
+
+If the storage file is missing, the application starts with the default demo accounts. Invalid or malformed storage records are ignored so a bad record does not terminate the application.
+
 ## Transaction History
 
 Successful withdrawals, deposits, and transfers are recorded against the affected account. Each entry contains the transaction type, amount, resulting balance, and related account number for transfers.
 
 Invalid or failed monetary operations do not create successful transaction-history entries.
-
-Transaction history is currently held in memory and is reset when the application exits.
 
 ## Application Flow
 
@@ -39,6 +45,9 @@ Program Start
     |
     v
 Initialize account collection
+    |
+    v
+Load persisted account and transaction state when available
     |
     v
 Login Screen
@@ -92,11 +101,12 @@ Windows:
 
 ## Known Limitations
 
-- Accounts are configured in source code and are not yet loaded from persistent storage.
-- Account and transaction state is held in memory and resets when the program exits.
-- Transaction history does not yet include timestamps or persistent storage.
+- Account identity and PIN configuration remain source-controlled demo data.
+- Persistence uses a local text file rather than a database.
+- Persistence records do not include timestamps.
+- Storage write failures are not surfaced through the console flow.
 - The non-Windows PIN fallback does not provide console masking.
 
 ## Roadmap
 
-The next planned stages are persistent account and transaction storage, stronger monetary/input validation, automated business-logic tests, and documentation refinement.
+The next planned stages are stronger monetary/input validation, automated business-logic tests, and documentation refinement.
