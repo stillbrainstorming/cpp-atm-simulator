@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <cmath>
+#include <limits>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -43,6 +45,24 @@ enum class TransferResult
     InsufficientBalance,
     Success
 };
+
+bool isValidMobileNumber(const string& mobileNo)
+{
+    if (mobileNo.size() != 10)
+    {
+        return false;
+    }
+
+    for (char digit : mobileNo)
+    {
+        if (digit < '0' || digit > '9')
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 class Account
 {
@@ -142,7 +162,7 @@ class TransactionService
 public:
     WithdrawalResult withdraw(Account& account, double amount)
     {
-        if (amount <= 0)
+        if (!isfinite(amount) || amount <= 0)
         {
             return WithdrawalResult::InvalidAmount;
         }
@@ -159,7 +179,7 @@ public:
 
     DepositResult deposit(Account& account, double amount)
     {
-        if (amount <= 0)
+        if (!isfinite(amount) || amount <= 0)
         {
             return DepositResult::InvalidAmount;
         }
@@ -171,7 +191,7 @@ public:
 
     TransferResult transfer(Account& source, Account* target, double amount)
     {
-        if (amount <= 0)
+        if (!isfinite(amount) || amount <= 0)
         {
             return TransferResult::InvalidAmount;
         }
@@ -200,7 +220,7 @@ public:
 
     bool updateMobile(Account& account, const string& oldMobileNo, const string& newMobileNo)
     {
-        if (oldMobileNo != account.getMobileNo())
+        if (oldMobileNo != account.getMobileNo() || !isValidMobileNumber(newMobileNo))
         {
             return false;
         }
@@ -327,25 +347,59 @@ private:
     int readPin()
     {
 #ifdef _WIN32
-        int accessCode = 0;
+        string pin;
         char digit;
         cout << endl << "Enter PIN: ";
         while ((digit = static_cast<char>(_getch())) != '\r')
         {
-            if (digit >= '0' && digit <= '9')
+            if (digit >= '0' && digit <= '9' && pin.size() < 4)
             {
-                accessCode = accessCode * 10 + (digit - '0');
+                pin += digit;
                 cout << '*';
             }
         }
         cout << endl;
-        return accessCode;
+        if (pin.size() != 4)
+        {
+            return -1;
+        }
+        return stoi(pin);
 #else
-        int accessCode;
+        string pin;
         cout << endl << "Enter PIN: ";
-        cin >> accessCode;
-        return accessCode;
+        cin >> pin;
+        if (pin.size() != 4 || !isValidMobileNumber("000000" + pin))
+        {
+            return -1;
+        }
+        return stoi(pin);
 #endif
+    }
+
+    bool readLongInput(const string& prompt, long int& value)
+    {
+        cout << endl << prompt;
+        if (cin >> value)
+        {
+            return true;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << endl << "Invalid numeric input.";
+        return false;
+    }
+
+    bool readAmount(const string& prompt, double& amount)
+    {
+        cout << endl << prompt;
+        if (cin >> amount && isfinite(amount))
+        {
+            return true;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << endl << "Invalid numeric input.";
+        return false;
     }
 
     void waitForInput()
@@ -367,8 +421,10 @@ private:
 
         while (failedAttempts < maxLoginAttempts)
         {
-            cout << endl << "Enter Your Account No: ";
-            cin >> enterAccountNo;
+            if (!readLongInput("Enter Your Account No: ", enterAccountNo))
+            {
+                continue;
+            }
 
             int enterAccessCode = readPin();
             Account* authenticatedAccount = authenticationService.authenticate(accounts, enterAccountNo, enterAccessCode);
@@ -433,8 +489,11 @@ private:
     {
         double amount = 0;
 
-        cout << endl << "Enter the Amount: ";
-        cin >> amount;
+        if (!readAmount("Enter the Amount: ", amount))
+        {
+            waitForInput();
+            return;
+        }
 
         WithdrawalResult result = transactionService.withdraw(*activeAccount, amount);
 
@@ -461,8 +520,11 @@ private:
     {
         double amount = 0;
 
-        cout << endl << "Enter the Amount: ";
-        cin >> amount;
+        if (!readAmount("Enter the Amount: ", amount))
+        {
+            waitForInput();
+            return;
+        }
 
         DepositResult result = transactionService.deposit(*activeAccount, amount);
 
@@ -486,10 +548,17 @@ private:
         long int targetAccountNo;
         double amount = 0;
 
-        cout << endl << "Enter Target Account No.: ";
-        cin >> targetAccountNo;
-        cout << endl << "Enter Transfer Amount: ";
-        cin >> amount;
+        if (!readLongInput("Enter Target Account No.: ", targetAccountNo))
+        {
+            waitForInput();
+            return;
+        }
+
+        if (!readAmount("Enter Transfer Amount: ", amount))
+        {
+            waitForInput();
+            return;
+        }
 
         Account* targetAccount = findAccount(targetAccountNo);
         TransferResult result = transactionService.transfer(*activeAccount, targetAccount, amount);
@@ -574,7 +643,14 @@ private:
             cout << endl << "6. Update Mobile No.";
             cout << endl << "7. Transaction History";
             cout << endl << "8. Exit" << endl;
-            cin >> choice;
+            if (!(cin >> choice))
+            {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << endl << "Invalid Input. Please Enter a number from 1 to 8.";
+                waitForInput();
+                continue;
+            }
 
             switch (choice)
             {
