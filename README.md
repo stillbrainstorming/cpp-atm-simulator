@@ -17,6 +17,8 @@ A console-based ATM simulation built with C++ that demonstrates object-oriented 
 - View transaction history for the authenticated account
 - Persist account balances, mobile numbers, and successful transaction history between sessions
 - Ignore malformed persistence records without terminating the application
+- Validate numeric input and reject non-finite or non-positive monetary values
+- Validate mobile-number updates as 10-digit numeric values
 - Windows-specific console behavior isolated with `_WIN32` guards
 
 ## Default Test Accounts
